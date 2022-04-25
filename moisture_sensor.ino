@@ -16,7 +16,8 @@ IIC:
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-#include "secrets.h" // ignore this in git repo, or make it a github secret
+#include "display_helpers.h"
+#include "secrets.h" 
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
@@ -41,7 +42,7 @@ void setup() {
     for(;;); // Don't proceed, loop forever
   }
 
-  displayText("Wifi...");
+  displayText(display, "Wifi...");
 
   // Connect to Wifi
   connectWifi(status, ssid, pass);
@@ -63,28 +64,11 @@ void loop() {
   Serial.print(moisture_value);
   Serial.println(" %");
 
-  displayMoisture(moisture_value);
+  displayMoisture(display, moisture_value);
   delay(1000); // Display for 1 second before next iteration
 }
 
-void displayText(const char* msg) {
-  display.clearDisplay();   // Clear display buffer
-  display.setTextSize(2);             // 2:1 pixel scale
-  display.setTextColor(SSD1306_WHITE);        // Draw white text
-  display.setCursor(4,0);             // Start at top-left corne
-  display.println(msg);
-  display.display();
-}
 
-void displayMoisture(int moisture_value) {
-  display.clearDisplay();               // Clear display buffer
-  display.setTextSize(4);             // 4:1 pixel scale
-  display.setTextColor(SSD1306_WHITE);       // Draw white text
-  display.setCursor(0,0);           // Start at top-left corner
-  display.print(moisture_value);
-  display.println(F(" %"));
-  display.display();
-}
 
 // Turn on LED for 1 second
 void blinkLed() {
@@ -109,11 +93,11 @@ void connectWifi(int status, char ssid[], char pass[]) {
   Serial.println("You're connected to the network");
 
   Serial.println("----------------------------------------");
-  printData();
+  printWifiData();
   Serial.println("----------------------------------------");
 }
 
-void printData() {
+void printWifiData() {
   Serial.println("Board Information:");
   // print your board's IP address:
   IPAddress ip = WiFi.localIP();
