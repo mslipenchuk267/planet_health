@@ -89,14 +89,18 @@ void loop() {
   mqttClient.poll();
 
   // Read analog input of moisture sensor
-  int soil_raw_value = analogRead(SOIL_MOISTURE_SENSOR_PIN); // random(1024); // 
-  int atm_raw_value = analogRead(ATM_MOISTURE_SENSOR_PIN); // random(1024); // 
+  int soil_raw_count = analogRead(SOIL_MOISTURE_SENSOR_PIN); // random(1024); // 
+  int atm_raw_count = analogRead(ATM_MOISTURE_SENSOR_PIN); // random(1024); // 
+
+  // Get Voltage of sensors
+  float soil_v = (float(soil_raw_count)/1023.0)*3.3;
+  float atm_v = (float(atm_raw_count)/1023.0)*3.3;
 
   // Map analog raw value to 0-100 range moisture %
-  int soil_moisture_value = map(soil_raw_value, 0, 1023, 0, 100);
-  soil_moisture_value = 100 - soil_moisture_value;
+  int soil_moisture_value = map(soil_raw_count, 445, 890, 0, 100); // wet: 445, dry: 890
+  soil_moisture_value = 100 - soil_moisture_value; 
 
-  int atm_moisture_value = map(atm_raw_value, 0, 1023, 0, 100);
+  int atm_moisture_value = map(atm_raw_count, 445, 890, 0, 100); // wet: 445, dry: 890
   atm_moisture_value = 100 - atm_moisture_value;
 
   int relative_moisture_value = soil_moisture_value - atm_moisture_value; 
@@ -107,6 +111,14 @@ void loop() {
   mqttClient.beginMessage(topic);
   mqttClient.print(sensor_name);
   mqttClient.print(",");
+  mqttClient.print(soil_v);
+  mqttClient.print(",");
+  mqttClient.print(atm_v);
+  mqttClient.print(",");
+  mqttClient.print(soil_raw_count);
+  mqttClient.print(",");
+  mqttClient.print(atm_raw_count);
+  mqttClient.print(",");
   mqttClient.print(soil_moisture_value);
   mqttClient.print(",");
   mqttClient.print(atm_moisture_value);
@@ -115,6 +127,15 @@ void loop() {
   mqttClient.endMessage();
 
   // Display Moisture Value
+  Serial.print("Soil V: ");
+  Serial.print(soil_v);
+  Serial.print(" | Atm V: ");
+  Serial.println(atm_v);
+
+  Serial.print("Soil Count: ");
+  Serial.print(soil_raw_count);
+  Serial.print(" | Atm Count: ");
+  Serial.println(atm_raw_count);
   // Serial
   Serial.print("Soil M.: ");
   Serial.print(soil_moisture_value);
@@ -123,6 +144,7 @@ void loop() {
   Serial.print(" % | Rel M.: ");
   Serial.print(relative_moisture_value);
   Serial.println(" %");
+  Serial.println("----------------------------------------");
   // OLED
   displayMoisture(display, relative_moisture_value);
   delay(1000); // Display for 1 second before next iteration
@@ -146,8 +168,8 @@ void connectWifi(int status, char ssid[], char pass[]) {
     // Connect to WPA/WPA2 network:
     status = WiFi.begin(ssid, pass);
 
-    // wait 10 seconds for connection:
-    delay(10000);
+    // wait 1 seconds for connection:
+    delay(1000);
   }
   // you're connected now, so print out the data:
   Serial.println("You're connected to the network");
