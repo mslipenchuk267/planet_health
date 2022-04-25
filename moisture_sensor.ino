@@ -27,6 +27,7 @@ IIC:
 
 char ssid[] = SECRET_SSID;        // your network SSID (name)
 char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as key for WEP)
+char sensor_name[] = SECRET_SENSOR_NAME;    // your network password (use for WPA, or use as key for WEP)
 int status = WL_IDLE_STATUS;     // the Wifi radio's status
 
 int MOISTURE_SENSOR_PIN = A0;
@@ -97,6 +98,8 @@ void loop() {
 
   // Send Moisture Value to MQTT broker
   mqttClient.beginMessage(topic);
+  mqttClient.print(sensor_name);
+  mqttClient.print(",");
   mqttClient.print(moisture_value);
   mqttClient.endMessage();
 
