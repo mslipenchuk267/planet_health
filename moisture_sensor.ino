@@ -85,21 +85,33 @@ void setup() {
 }
 
 void loop() {
+  int start_time = micros();
   // call poll() regularly to allow the library to send MQTT keep alive which
   // avoids being disconnected by the broker
   mqttClient.poll();
 
   // Read analog input of moisture sensor
-  int soil_raw_count = analogRead(SOIL_MOISTURE_SENSOR_PIN); // random(1024); // 
-  int atm_raw_count = analogRead(ATM_MOISTURE_SENSOR_PIN); // random(1024); // 
+  int i = 0;
+  int soil_count_sum = 0;
+  int atm_count_sum = 0;
+  for (i = 0; i < 591; i++) {
+    int soil_raw_count = analogRead(SOIL_MOISTURE_SENSOR_PIN); // random(1024); // 
+    int atm_raw_count = analogRead(ATM_MOISTURE_SENSOR_PIN); // random(1024); // 
+
+    soil_count_sum += soil_raw_count;
+    atm_count_sum += atm_raw_count;
+  }
+
+  int soil_count_avg = soil_count_sum / 591;
+  int atm_count_avg = atm_count_sum / 591;
 
   // Get Voltage of sensors
-  float soil_v = (float(soil_raw_count)/1023.0)*3.3;
-  float atm_v = (float(atm_raw_count)/1023.0)*3.3;
+  float soil_v = (float(soil_count_avg)/1023.0)*3.3;
+  float atm_v = (float(atm_count_avg)/1023.0)*3.3;
 
   // Map analog raw value to 0-100 range moisture %
-  int soil_moisture_value = getMoisturePercentage(soil_raw_count);
-  int atm_moisture_value = getMoisturePercentage(atm_raw_count);
+  int soil_moisture_value = getMoisturePercentage(soil_count_avg);
+  int atm_moisture_value = getMoisturePercentage(atm_count_avg);
 
   // Adjust soil moisture for atmospheric mositure
   int relative_moisture_value = getRelativeMoisture(soil_moisture_value, atm_moisture_value); 
@@ -112,9 +124,9 @@ void loop() {
   mqttClient.print(",");
   mqttClient.print(atm_v);
   mqttClient.print(",");
-  mqttClient.print(soil_raw_count);
+  mqttClient.print(soil_count_avg);
   mqttClient.print(",");
-  mqttClient.print(atm_raw_count);
+  mqttClient.print(atm_count_avg);
   mqttClient.print(",");
   mqttClient.print(soil_moisture_value);
   mqttClient.print(",");
@@ -122,17 +134,22 @@ void loop() {
   mqttClient.print(",");
   mqttClient.print(relative_moisture_value);
   mqttClient.endMessage();
+  int end_time = micros();
 
   // Display Moisture Value
+  Serial.print("Loop Time: ");
+  Serial.print(end_time - start_time);
+  Serial.println(" microsec");
+
   Serial.print("Soil V: ");
   Serial.print(soil_v);
   Serial.print(" | Atm V: ");
   Serial.println(atm_v);
 
   Serial.print("Soil Count: ");
-  Serial.print(soil_raw_count);
+  Serial.print(soil_count_avg);
   Serial.print(" | Atm Count: ");
-  Serial.println(atm_raw_count);
+  Serial.println(atm_count_avg);
   // Serial
   Serial.print("Soil M.: ");
   Serial.print(soil_moisture_value);
@@ -144,7 +161,7 @@ void loop() {
   Serial.println("----------------------------------------");
   // OLED
   displayMoisture(display, relative_moisture_value);
-  delay(1000); // Display for 1 second before next iteration
+  //delay(1000); // Display for 1 second before next iteration
 }
 
 
