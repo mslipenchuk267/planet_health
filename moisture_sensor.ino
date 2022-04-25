@@ -30,7 +30,8 @@ char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as k
 char sensor_name[] = SECRET_SENSOR_NAME;    // your network password (use for WPA, or use as key for WEP)
 int status = WL_IDLE_STATUS;     // the Wifi radio's status
 
-int MOISTURE_SENSOR_PIN = A0;
+int SOIL_MOISTURE_SENSOR_PIN = A0;
+int ATM_MOISTURE_SENSOR_PIN = A1;
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
@@ -88,11 +89,17 @@ void loop() {
   mqttClient.poll();
 
   // Read analog input of moisture sensor
-  int raw_value = analogRead(MOISTURE_SENSOR_PIN); // random(1024); // 
+  int soil_raw_value = analogRead(SOIL_MOISTURE_SENSOR_PIN); // random(1024); // 
+  int atm_raw_value = analogRead(ATM_MOISTURE_SENSOR_PIN); // random(1024); // 
 
   // Map analog raw value to 0-100 range moisture %
-  int moisture_value = map(raw_value, 0, 1023, 0, 100);
-  moisture_value = 100 - moisture_value;
+  int soil_moisture_value = map(soil_raw_value, 0, 1023, 0, 100);
+  soil_moisture_value = 100 - soil_moisture_value;
+
+  int atm_moisture_value = map(atm_raw_value, 0, 1023, 0, 100);
+  atm_moisture_value = 100 - atm_moisture_value;
+
+  int relative_moisture_value = soil_moisture_value - atm_moisture_value; 
 
   // (TODO) Adjust sensor for atmospheric mositure
 
@@ -100,16 +107,24 @@ void loop() {
   mqttClient.beginMessage(topic);
   mqttClient.print(sensor_name);
   mqttClient.print(",");
-  mqttClient.print(moisture_value);
+  mqttClient.print(soil_moisture_value);
+  mqttClient.print(",");
+  mqttClient.print(atm_moisture_value);
+  mqttClient.print(",");
+  mqttClient.print(relative_moisture_value);
   mqttClient.endMessage();
 
   // Display Moisture Value
   // Serial
-  Serial.print("Soil Moisture: ");
-  Serial.print(moisture_value);
+  Serial.print("Soil M.: ");
+  Serial.print(soil_moisture_value);
+  Serial.print(" % | Atm M.: ");
+  Serial.print(atm_moisture_value);
+  Serial.print(" % | Rel M.: ");
+  Serial.print(relative_moisture_value);
   Serial.println(" %");
   // OLED
-  displayMoisture(display, moisture_value);
+  displayMoisture(display, relative_moisture_value);
   delay(1000); // Display for 1 second before next iteration
 }
 
