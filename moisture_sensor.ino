@@ -18,6 +18,7 @@ IIC:
 #include <ArduinoMqttClient.h>
 
 #include "display_helpers.h"
+#include "processing_helpers.h"
 #include "secrets.h" 
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
@@ -97,15 +98,11 @@ void loop() {
   float atm_v = (float(atm_raw_count)/1023.0)*3.3;
 
   // Map analog raw value to 0-100 range moisture %
-  int soil_moisture_value = map(soil_raw_count, 445, 890, 0, 100); // wet: 445, dry: 890
-  soil_moisture_value = 100 - soil_moisture_value; 
+  int soil_moisture_value = getMoisturePercentage(soil_raw_count);
+  int atm_moisture_value = getMoisturePercentage(atm_raw_count);
 
-  int atm_moisture_value = map(atm_raw_count, 445, 890, 0, 100); // wet: 445, dry: 890
-  atm_moisture_value = 100 - atm_moisture_value;
-
-  int relative_moisture_value = soil_moisture_value - atm_moisture_value; 
-
-  // (TODO) Adjust sensor for atmospheric mositure
+  // Adjust soil moisture for atmospheric mositure
+  int relative_moisture_value = getRelativeMoisture(soil_moisture_value, atm_moisture_value); 
 
   // Send Moisture Value to MQTT broker
   mqttClient.beginMessage(topic);
