@@ -18,6 +18,7 @@ IIC:
 #include <ArduinoMqttClient.h>
 
 #include "display_helpers.h"
+#include "processing_helpers.h"
 #include "secrets.h" 
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
@@ -27,9 +28,11 @@ IIC:
 
 char ssid[] = SECRET_SSID;        // your network SSID (name)
 char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as key for WEP)
+char sensor_name[] = SECRET_SENSOR_NAME;    // your network password (use for WPA, or use as key for WEP)
 int status = WL_IDLE_STATUS;     // the Wifi radio's status
 
-int MOISTURE_SENSOR_PIN = A0;
+int SOIL_MOISTURE_SENSOR_PIN = A0;
+int ATM_MOISTURE_SENSOR_PIN = A1;
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
@@ -82,32 +85,83 @@ void setup() {
 }
 
 void loop() {
+  int start_time = micros();
   // call poll() regularly to allow the library to send MQTT keep alive which
   // avoids being disconnected by the broker
   mqttClient.poll();
 
   // Read analog input of moisture sensor
-  int raw_value = analogRead(MOISTURE_SENSOR_PIN); // random(1024); // 
+  int i = 0;
+  int soil_count_sum = 0;
+  int atm_count_sum = 0;
+  for (i = 0; i < 591; i++) {
+    int soil_raw_count = analogRead(SOIL_MOISTURE_SENSOR_PIN); // random(1024); // 
+    int atm_raw_count = analogRead(ATM_MOISTURE_SENSOR_PIN); // random(1024); // 
+
+    soil_count_sum += soil_raw_count;
+    atm_count_sum += atm_raw_count;
+  }
+
+  int soil_count_avg = soil_count_sum / 591;
+  int atm_count_avg = atm_count_sum / 591;
+
+  // Get Voltage of sensors
+  float soil_v = (float(soil_count_avg)/1023.0)*3.3;
+  float atm_v = (float(atm_count_avg)/1023.0)*3.3;
 
   // Map analog raw value to 0-100 range moisture %
-  int moisture_value = map(raw_value, 0, 1023, 0, 100);
-  moisture_value = 100 - moisture_value;
+  int soil_moisture_value = getMoisturePercentage(soil_count_avg);
+  int atm_moisture_value = getMoisturePercentage(atm_count_avg);
 
-  // (TODO) Adjust sensor for atmospheric mositure
+  // Adjust soil moisture for atmospheric mositure
+  int relative_moisture_value = getRelativeMoisture(soil_moisture_value, atm_moisture_value); 
 
   // Send Moisture Value to MQTT broker
   mqttClient.beginMessage(topic);
-  mqttClient.print(moisture_value);
+  mqttClient.print(sensor_name);
+  mqttClient.print(",");
+  mqttClient.print(soil_v);
+  mqttClient.print(",");
+  mqttClient.print(atm_v);
+  mqttClient.print(",");
+  mqttClient.print(soil_count_avg);
+  mqttClient.print(",");
+  mqttClient.print(atm_count_avg);
+  mqttClient.print(",");
+  mqttClient.print(soil_moisture_value);
+  mqttClient.print(",");
+  mqttClient.print(atm_moisture_value);
+  mqttClient.print(",");
+  mqttClient.print(relative_moisture_value);
   mqttClient.endMessage();
+  int end_time = micros();
 
   // Display Moisture Value
+  Serial.print("Loop Time: ");
+  Serial.print(end_time - start_time);
+  Serial.println(" microsec");
+
+  Serial.print("Soil V: ");
+  Serial.print(soil_v);
+  Serial.print(" | Atm V: ");
+  Serial.println(atm_v);
+
+  Serial.print("Soil Count: ");
+  Serial.print(soil_count_avg);
+  Serial.print(" | Atm Count: ");
+  Serial.println(atm_count_avg);
   // Serial
-  Serial.print("Soil Moisture: ");
-  Serial.print(moisture_value);
+  Serial.print("Soil M.: ");
+  Serial.print(soil_moisture_value);
+  Serial.print(" % | Atm M.: ");
+  Serial.print(atm_moisture_value);
+  Serial.print(" % | Rel M.: ");
+  Serial.print(relative_moisture_value);
   Serial.println(" %");
+  Serial.println("----------------------------------------");
   // OLED
-  displayMoisture(display, moisture_value);
-  delay(1000); // Display for 1 second before next iteration
+  displayMoisture(display, relative_moisture_value);
+  //delay(1000); // Display for 1 second before next iteration
 }
 
 
@@ -128,8 +182,8 @@ void connectWifi(int status, char ssid[], char pass[]) {
     // Connect to WPA/WPA2 network:
     status = WiFi.begin(ssid, pass);
 
-    // wait 10 seconds for connection:
-    delay(10000);
+    // wait 1 seconds for connection:
+    delay(1000);
   }
   // you're connected now, so print out the data:
   Serial.println("You're connected to the network");
