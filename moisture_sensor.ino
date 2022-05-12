@@ -41,7 +41,14 @@ MqttClient mqttClient(wifiClient);
 
 const char broker[] = SECRET_IP;
 int        port     = 1883;
-const char topic[]  = "moisture";
+//const char topic[]  = "moisture";
+
+String delim = "/";
+String moisture_topic = "moisture";
+
+String topic_string = SECRET_SENSOR_NAME + delim + moisture_topic;
+const char *topic = topic_string.c_str();
+
 
 //set interval for sending messages (milliseconds)
 const long interval = 8000;
@@ -115,6 +122,7 @@ void loop() {
 
   // Adjust soil moisture for atmospheric mositure
   int relative_moisture_value = getRelativeMoisture(soil_moisture_value, atm_moisture_value); 
+  int end_time = micros();
 
   // Send Moisture Value to MQTT broker
   mqttClient.beginMessage(topic);
@@ -134,7 +142,6 @@ void loop() {
   mqttClient.print(",");
   mqttClient.print(relative_moisture_value);
   mqttClient.endMessage();
-  int end_time = micros();
 
   // Display Moisture Value
   Serial.print("Loop Time: ");
@@ -160,7 +167,7 @@ void loop() {
   Serial.println(" %");
   Serial.println("----------------------------------------");
   // OLED
-  displayMoisture(display, relative_moisture_value);
+  displayMoisture(display, relative_moisture_value, soil_moisture_value, atm_moisture_value);
   //delay(1000); // Display for 1 second before next iteration
 }
 
